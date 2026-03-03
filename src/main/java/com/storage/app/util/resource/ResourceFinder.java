@@ -5,12 +5,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class ResourceFinder {
 
-    public String getResourceName(String fullPath) {
+    public String getResourceNameFromPath(String fullPath) {
         String[] path = fullPath.split("/");
         return path[path.length - 1];
     }
 
-    public String getPathToResource(String fullPath) {
+    public String getPathToResourceFromPath(String fullPath) {
         StringBuilder pathBuilder = new StringBuilder();
         String[] path = fullPath.split("/");
         for (int i = 0; i < path.length - 1; i++) {
