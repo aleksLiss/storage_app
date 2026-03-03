@@ -2,6 +2,7 @@ package com.storage.app.controller;
 
 import com.storage.app.dto.authenticate.JwtRequest;
 import com.storage.app.dto.user.UserDto;
+import com.storage.app.service.MinioService;
 import com.storage.app.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -32,6 +33,7 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
+    private final MinioService minioService;
     private final SecurityContextRepository securityContextRepository = new DelegatingSecurityContextRepository(
             new RequestAttributeSecurityContextRepository(),
             new HttpSessionSecurityContextRepository()
@@ -49,13 +51,15 @@ public class AuthController {
     public ResponseEntity<?> signIn(@Valid @RequestBody JwtRequest jwtRequest,
                                     HttpServletRequest request,
                                     HttpServletResponse response) {
+        String username = jwtRequest.username();
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(jwtRequest.username(), jwtRequest.password())
+                new UsernamePasswordAuthenticationToken(username, jwtRequest.password())
         );
+        minioService.createRootFolderForUserByUsername(username);
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         securityContextRepository.saveContext(context, request, response);
-        return ResponseEntity.ok(Map.of("username", jwtRequest.username()));
+        return ResponseEntity.ok(Map.of("username", username));
     }
 
     @PostMapping("/sign-out")
