@@ -1,10 +1,9 @@
-package com.storage.app.util.resource.file;
+package com.storage.app.util.file;
 
 import com.storage.app.config.MinioConfig;
-import com.storage.app.exception.FileBigSizeException;
-import com.storage.app.exception.FileExistException;
-import com.storage.app.exception.FileNotExistsException;
-import com.storage.app.util.resource.folder.FolderChecker;
+import com.storage.app.exception.resource.file.FileBigSizeException;
+import com.storage.app.exception.resource.file.FileExistException;
+import com.storage.app.exception.resource.file.FileNotExistsException;
 import io.minio.ListObjectsArgs;
 import io.minio.MinioClient;
 import io.minio.Result;
@@ -21,7 +20,6 @@ import java.nio.file.Paths;
 @Slf4j
 public class FileChecker {
 
-    private final FolderChecker folderChecker;
     private final MinioConfig minioConfig;
 
     public void checkFileSize(MultipartFile file) {
@@ -36,7 +34,7 @@ public class FileChecker {
         }
     }
 
-    public void fileExistsInDirectory(MinioClient minioClient, MultipartFile file, String path) throws Exception {
+    public void fileExistsInDirectory(MinioClient minioClient, MultipartFile file, String path) {
         Iterable<Result<Item>> results = minioClient.listObjects(
                 ListObjectsArgs.builder()
                         .bucket(minioConfig.getBucketName())
@@ -44,14 +42,17 @@ public class FileChecker {
                         .recursive(false)
                         .build()
         );
-        for (Result<Item> result : results) {
-            Item item = result.get();
-            String fileName = Paths.get(item.objectName()).getFileName().toString();
-            String nameFrom = file.getOriginalFilename();
-            if (nameFrom != null && nameFrom.equals(fileName)) {
-                throw new FileExistException("File with name '" + nameFrom + "' already exists");
+        try {
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                String fileName = Paths.get(item.objectName()).getFileName().toString();
+                String nameFrom = file.getOriginalFilename();
+                if (nameFrom != null && nameFrom.equals(fileName)) {
+                    throw new FileExistException("File with name '" + nameFrom + "' already exists");
+                }
             }
+        } catch (Exception ex) {
+            throw new FileExistException("File with name '" + path + "' already exist");
         }
     }
-
 }
