@@ -1,7 +1,6 @@
 package com.storage.app.controller;
 
 import com.storage.app.dto.resource.request.*;
-import com.storage.app.dto.resource.response.DownloadResourceDto;
 import com.storage.app.service.MinioService;
 import jakarta.validation.Valid;
 import lombok.NonNull;
@@ -14,6 +13,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,27 +27,45 @@ public class ResourceController {
     private final MinioService minioService;
 
     @GetMapping("/resource")
-    public ResponseEntity<?> getResource(@Valid
-                                         @ModelAttribute FoundResourceDto foundResourceDto) throws Exception {
+    public ResponseEntity<?> getResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto) {
         LinkedHashMap<String, String> response = minioService.getResource(foundResourceDto);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @DeleteMapping("/resource")
-    public ResponseEntity<?> deleteResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto) throws  Exception {
+    public ResponseEntity<?> deleteResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto) {
         minioService.deleteResource(foundResourceDto);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
+    @PostMapping("/resource")
+    public ResponseEntity<?> uploadResource(@ModelAttribute UploadResourceDto uploadResourceDto,
+                                            @RequestParam("object") MultipartFile[] files,
+                                            Principal principal) {
+        List<LinkedHashMap<String, String>> response =
+                minioService.uploadResource(files, uploadResourceDto, principal);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/directory")
+    public ResponseEntity<?> createFolder(Principal principal,
+                                          @Valid @ModelAttribute CreateFolderDto folderDto) {
+        Map<String, String> response = minioService.createFolder(folderDto, principal);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @GetMapping("/directory")
-    public ResponseEntity<?> getResourceFromDirectory(@Valid @ModelAttribute FoundResourceDto foundResourceDto) throws Exception {
-        List<LinkedHashMap<String, String>> response = minioService.getResourcesFromFolder(foundResourceDto);
+    public ResponseEntity<?> getResourceFromDirectory(Principal principal,
+                                                      @Valid @ModelAttribute FoundResourceDto foundResourceDto) {
+        List<LinkedHashMap<String, String>> response = minioService.getResourcesFromFolder(foundResourceDto, principal);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+
     @GetMapping("/resource/move")
-    public ResponseEntity<?> moveResource(@Valid @ModelAttribute MoveResourceDto moveResourceDto) throws Exception {
-        Map<String, String> response = minioService.moveResource(moveResourceDto);
+    public ResponseEntity<?> moveResource(@Valid @ModelAttribute MoveResourceDto moveResourceDto,
+                                          Principal principal) {
+        Map<String, String> response = minioService.moveResource(moveResourceDto, principal);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -58,44 +76,24 @@ public class ResourceController {
     }
 
     @GetMapping("/resource/download")
-    public ResponseEntity<@NonNull StreamingResponseBody> downloadResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto) throws  Exception {
+    public ResponseEntity<@NonNull StreamingResponseBody> downloadResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto) {
         String path = foundResourceDto.getPath();
+        String fileName = path.endsWith("/")
+                ? path.substring(0, path.length() - 1).concat(".zip")
+                : path.substring(0, path.length() - 1);
+        String encodedFilename = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+                .replaceAll("\\+", "%20");
         if (path.endsWith("/")) {
-            String fileName = path.substring(0, path.length() - 1).concat(".zip");
-            String encodedFilename = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
-                    .replaceAll("\\+", "%20");
             return ResponseEntity
                     .ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(minioService.downloadFolder(foundResourceDto));
         }
-        DownloadResourceDto downloadResourceDto = minioService.downloadFile(foundResourceDto);
-        StreamingResponseBody streamingResponseBody = downloadResourceDto.getStreamingResponseBody();
-        String extensionFile = downloadResourceDto.getFileExtension();
-        String fileName = downloadResourceDto.getFileName().concat(".").concat(extensionFile);
-        String encodedFilename = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
-                .replaceAll("\\+", "%20");
         return ResponseEntity
                 .ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(streamingResponseBody);
-    }
-
-    @PostMapping("/directory")
-    public ResponseEntity<?> createFolder(@Valid
-                                          @ModelAttribute
-                                          CreateFolderDto folderDto) throws Exception {
-        Map<String, String> response = minioService.createFolder(folderDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
-    @PostMapping("/resource")
-    public ResponseEntity<?> createResource(@Valid
-                                            @ModelAttribute UploadResourceDto uploadResourceDto,
-                                            @RequestParam("file") MultipartFile[] file) throws Exception {
-        List<LinkedHashMap<String, String>> response = minioService.uploadResource(file, uploadResourceDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+                .body(minioService.downloadFile(foundResourceDto));
     }
 }
