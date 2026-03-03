@@ -1,4 +1,4 @@
-package com.storage.app.exception;
+package com.storage.app.exception.resource;
 
 public class ResourceAlreadyExistsException extends RuntimeException {
     public ResourceAlreadyExistsException(String message) {
