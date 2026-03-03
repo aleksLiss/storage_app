@@ -1,4 +1,4 @@
-package com.storage.app.exception;
+package com.storage.app.exception.user;
 
 public class UserAlreadyExistsException extends RuntimeException {
     public UserAlreadyExistsException(String message) {
