@@ -5,7 +5,6 @@ import com.storage.app.dto.resource.response.AnswerResponseDto;
 import com.storage.app.util.CopyAnswerResponseDtoCreator;
 import io.minio.Result;
 import io.minio.messages.Item;
-import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,7 +20,7 @@ public class PathParser {
 
     private final CopyAnswerResponseDtoCreator copyAnswerResponseDtoCreator;
 
-    public HashSet<AnswerResponseDto> parsePath(Iterable<Result<Item>> results, @Valid SearchResourceDto searchResourceDto) {
+    public HashSet<AnswerResponseDto> parsePath(Iterable<Result<Item>> results, SearchResourceDto searchResourceDto) {
         HashSet<AnswerResponseDto> resultDtos = new HashSet<>();
         String query = searchResourceDto.getQuery();
         Pattern pattern = Pattern.compile("(^|/)" + Pattern.quote(query) + "(\\.[^/]*|/|$)");
