@@ -1,6 +1,5 @@
 package com.storage.app.controller;
 
-import com.storage.app.exception.AppError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +19,7 @@ public class UserController {
     public ResponseEntity<?> me(Principal principal) {
         if (principal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new AppError(HttpStatus.UNAUTHORIZED.value(), "User is not authenticated"));
+                    .body(Map.of("message", "User is not authenticated"));
         }
         return ResponseEntity.ok(Map.of("username", principal.getName()));
     }
