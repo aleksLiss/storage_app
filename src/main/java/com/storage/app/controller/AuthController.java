@@ -4,6 +4,12 @@ import com.storage.app.dto.authenticate.JwtRequest;
 import com.storage.app.dto.user.UserDto;
 import com.storage.app.service.MinioService;
 import com.storage.app.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -29,6 +35,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "Authenticate-controller", description = "AUTHENTICATE API")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -39,6 +46,40 @@ public class AuthController {
             new HttpSessionSecurityContextRepository()
     );
 
+    @Operation(summary = "Sign-up user")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject("{\"username\":\"max@google\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid username",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject("{\"message\":\"Incorrect username\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Username already exists",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject("{\"message\":\"Username already exists\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject("{\"message\":\"Internal server error\"}")
+                    )
+            ),
+    })
     @PostMapping("/sign-up")
     public ResponseEntity<?> signUp(@Valid @RequestBody UserDto userDto) {
         userService.save(userDto);
@@ -47,6 +88,40 @@ public class AuthController {
                 .body(Map.of("username", userDto.getUsername()));
     }
 
+    @Operation(summary = "Sign-in user by login and password")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject("{\"username\":\"max@google\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Incorrect username or password",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject("{\"message\":\"Password must be not empty\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Username was not found",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject("{\"message\":\"Username was not found\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject("{\"message\":\"Internal server error\"}")
+                    )
+            )
+    })
     @PostMapping("/sign-in")
     public ResponseEntity<?> signIn(@Valid @RequestBody JwtRequest jwtRequest,
                                     HttpServletRequest request,
@@ -62,11 +137,31 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("username", username));
     }
 
+    @Operation(summary = "Sign-out user")
+    @ApiResponses(value = {
+            @ApiResponse(
+                responseCode = "204"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject("{\"message\":\"Unauthorized user\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal error",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples=@ExampleObject("{\"message\":\"Internal server error\"}")
+                    )
+            )
+    })
     @PostMapping("/sign-out")
     public ResponseEntity<?> signOut(HttpSession session) {
         session.invalidate();
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }
-
-
