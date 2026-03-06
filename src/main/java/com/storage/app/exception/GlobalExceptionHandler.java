@@ -7,6 +7,7 @@ import com.storage.app.exception.resource.ResourceNotFoundException;
 import com.storage.app.exception.resource.ResourceUploadException;
 import com.storage.app.exception.resource.file.FileBigSizeException;
 import com.storage.app.exception.resource.file.FileDownloadException;
+import com.storage.app.exception.resource.file.FileExistException;
 import com.storage.app.exception.resource.file.FileNotExistsException;
 import com.storage.app.exception.resource.folder.FolderCreateException;
 import com.storage.app.exception.resource.folder.FolderDownloadException;
@@ -14,6 +15,7 @@ import com.storage.app.exception.resource.folder.FolderNotExistsException;
 import com.storage.app.exception.user.UserAlreadyExistsException;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -31,7 +34,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             ResourceAlreadyExistsException.class,
             FolderCreateException.class,
-            UserAlreadyExistsException.class})
+            UserAlreadyExistsException.class,
+            FileExistException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     public ResponseEntity<@NonNull Map<String, String>> handleExistsExceptions(Exception ex) {
         if (ex instanceof UserAlreadyExistsException) {
@@ -47,10 +51,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({MethodArgumentNotValidException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ResponseEntity<@NonNull Map<String, String>> handleValidResourcesExceptions(Exception ex) {
-        log.warn(ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("message", ex.getMessage()));
+    public ResponseEntity<@NonNull Map<String, String>> handleValidResourcesExceptions(MethodArgumentNotValidException ex) {
+        var fieldErrors = ex.getBindingResult().getFieldErrors();
+        var priorityError = fieldErrors.stream()
+                .filter(f -> f.getField().equals("username"))
+                .findFirst()
+                .orElseGet(() -> fieldErrors.stream().findFirst().orElse(null));
+        if (priorityError == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Ошибка валидации"));
+        }
+        Map<String, String> response = new HashMap<>();
+        response.put("field", priorityError.getField());
+        response.put("message", priorityError.getDefaultMessage());
+        response.put(priorityError.getField(), priorityError.getDefaultMessage());
+        log.warn("Validation error in field [{}]: {}", priorityError.getField(), priorityError.getDefaultMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler({
