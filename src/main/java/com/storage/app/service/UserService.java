@@ -1,6 +1,6 @@
 package com.storage.app.service;
 
-import com.storage.app.exception.UserAlreadyExistsException;
+import com.storage.app.exception.user.UserAlreadyExistsException;
 import com.storage.app.dto.user.UserDto;
 import com.storage.app.mapper.UserDetailsMapper;
 import com.storage.app.model.User;
