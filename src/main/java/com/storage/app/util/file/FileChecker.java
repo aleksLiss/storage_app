@@ -3,7 +3,6 @@ package com.storage.app.util.file;
 import com.storage.app.config.MinioConfig;
 import com.storage.app.exception.resource.file.FileBigSizeException;
 import com.storage.app.exception.resource.file.FileExistException;
-import com.storage.app.exception.resource.file.FileNotExistsException;
 import io.minio.ListObjectsArgs;
 import io.minio.MinioClient;
 import io.minio.Result;
@@ -28,12 +27,6 @@ public class FileChecker {
         }
     }
 
-    public void fileIsEmpty(MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new FileNotExistsException("File was not found");
-        }
-    }
-
     public void fileExistsInDirectory(MinioClient minioClient, MultipartFile file, String path) {
         Iterable<Result<Item>> results = minioClient.listObjects(
                 ListObjectsArgs.builder()
@@ -48,11 +41,14 @@ public class FileChecker {
                 String fileName = Paths.get(item.objectName()).getFileName().toString();
                 String nameFrom = file.getOriginalFilename();
                 if (nameFrom != null && nameFrom.equals(fileName)) {
-                    throw new FileExistException("File with name '" + nameFrom + "' already exists");
+                    throw new FileExistException("File with name '" + fileName + "' already exists");
                 }
             }
+        } catch (FileExistException ex) {
+            throw ex;
         } catch (Exception ex) {
-            throw new FileExistException("File with name '" + path + "' already exist");
+            log.error("Error while checking file existence", ex);
+            throw new RuntimeException("Storage error", ex);
         }
     }
 }
