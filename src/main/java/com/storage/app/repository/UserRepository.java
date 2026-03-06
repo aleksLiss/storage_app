@@ -14,4 +14,5 @@ public interface UserRepository extends JpaRepository<@NonNull User, @NonNull UU
     boolean existsUserByUsername(String username);
 
     Optional<User> findByUsername(String username);
+
 }
