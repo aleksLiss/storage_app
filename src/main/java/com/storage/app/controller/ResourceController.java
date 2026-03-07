@@ -30,7 +30,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Tag(name = "Resource-controller", description = "RESOURCE API")
 public class ResourceController {
-
     private final MinioService minioService;
 
     @Operation(summary = "Get resource by path")
@@ -88,9 +87,8 @@ public class ResourceController {
             )
     })
     @GetMapping("/resource")
-    public ResponseEntity<?> getResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto,
-                                         Principal principal) {
-        LinkedHashMap<String, String> response = minioService.getResource(foundResourceDto, principal);
+    public ResponseEntity<?> getResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto) {
+        LinkedHashMap<String, String> response = minioService.getResource(foundResourceDto);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -527,18 +525,17 @@ public class ResourceController {
                 : path.substring(0, path.length() - 1);
         String encodedFilename = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
                 .replaceAll("\\+", "%20");
-        minioService.checkResourceExists(foundResourceDto, principal);
         if (path.endsWith("/")) {
             return ResponseEntity
                     .ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .body(minioService.downloadFolder(foundResourceDto, principal));
+                    .body(minioService.downloadFolder(foundResourceDto));
         }
         return ResponseEntity
                 .ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(minioService.downloadFile(foundResourceDto, principal));
+                .body(minioService.downloadFile(foundResourceDto));
     }
 }
