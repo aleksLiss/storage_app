@@ -1,0 +1,78 @@
+services:
+  storage_app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_URL=${POSTGRES_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-server:
+        condition: service_healthy
+  front-end:
+    container_name: front_end
+    image: nginx:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/app/app.conf:/etc/nginx/conf.d/app.conf
+      - ./nginx/html:/usr/share/nginx/html
+    depends_on:
+      - storage_app
+  postgres_db:
+    image: postgres:16
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  minio-server:
+    image: minio/minio:latest
+    container_name: minio-server
+    command: server /data --console-address ":9001"
+    restart: always
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: [ "CMD", "mc", "ready","local" ]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 10s
+volumes:
+  postgres_data:
+    driver: local
+  minio_data:
+    driver: local
