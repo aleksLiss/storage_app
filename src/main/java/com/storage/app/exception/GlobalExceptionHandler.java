@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -52,21 +51,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({MethodArgumentNotValidException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<@NonNull Map<String, String>> handleValidResourcesExceptions(MethodArgumentNotValidException ex) {
-        var fieldErrors = ex.getBindingResult().getFieldErrors();
-        var priorityError = fieldErrors.stream()
+        var errors = ex.getBindingResult().getFieldErrors();
+        String errorMessage = errors.stream()
                 .filter(f -> f.getField().equals("username"))
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
                 .findFirst()
-                .orElseGet(() -> fieldErrors.stream().findFirst().orElse(null));
-        if (priorityError == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("message", "Ошибка валидации"));
-        }
-        Map<String, String> response = new HashMap<>();
-        response.put("field", priorityError.getField());
-        response.put("message", priorityError.getDefaultMessage());
-        response.put(priorityError.getField(), priorityError.getDefaultMessage());
-        log.warn("Validation error in field [{}]: {}", priorityError.getField(), priorityError.getDefaultMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+                .orElse(errors.get(0).getDefaultMessage());
+
+        return ResponseEntity.badRequest().body(Map.of("message", errorMessage));
     }
 
     @ExceptionHandler({
