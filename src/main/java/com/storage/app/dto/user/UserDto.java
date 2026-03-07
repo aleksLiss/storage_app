@@ -20,6 +20,6 @@ public class UserDto {
     private String username;
     @Schema(name = "password", examples = "123qwe")
     @NotBlank(message = "password must be not empty")
-    @Length(message = "password must be not empty and has length 6 - 100", min=6, max=100)
+    @Length(min = 6, max = 100, message = "password must be between 6 and 100 characters")
     private String password;
 }

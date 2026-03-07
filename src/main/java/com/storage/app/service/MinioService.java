@@ -5,10 +5,8 @@ import com.storage.app.dto.resource.request.*;
 import com.storage.app.dto.resource.response.AnswerResponseDto;
 import com.storage.app.exception.resource.*;
 import com.storage.app.exception.resource.file.FileDownloadException;
-import com.storage.app.exception.resource.file.FileNotExistsException;
 import com.storage.app.exception.resource.folder.FolderCreateException;
 import com.storage.app.exception.resource.folder.FolderDownloadException;
-import com.storage.app.exception.resource.folder.FolderNotExistsException;
 import com.storage.app.mapper.*;
 import com.storage.app.model.User;
 import com.storage.app.repository.UserRepository;
@@ -30,7 +28,6 @@ import java.nio.file.Paths;
 import java.security.Principal;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -51,8 +48,8 @@ public class MinioService {
     private static final String FILE = "FILE";
     private static final String ROOT_FOLDER = "user-%s-files/";
 
-    public LinkedHashMap<String, String> getResource(FoundResourceDto foundResourceDto, Principal principal) {
-        Iterable<Result<Item>> results = checkCorrectPathToResource(false, foundResourceDto, principal);
+    public LinkedHashMap<String, String> getResource(FoundResourceDto foundResourceDto) {
+        Iterable<Result<Item>> results = checkCorrectPathToResource(false, foundResourceDto);
         List<LinkedHashMap<String, String>> allFound = answerResponseDtoMapper
                 .getListAnswerResponseDtos(results, resourceFinder, foundResourceDto.getPath());
         if (allFound.isEmpty()) {
@@ -64,12 +61,15 @@ public class MinioService {
                 .orElse(allFound.getFirst());
     }
 
-
     public void deleteResource(FoundResourceDto foundResourceDto, Principal principal) {
         MinioClient minioClient = minioConfig.getMinioClient();
-        Iterable<Result<Item>> results = checkCorrectPathToResource(true, foundResourceDto, principal);
-        checkResourceExists(foundResourceDto, principal);
+        String root = createPathToRootFolder(principal);
+        String rawPath = foundResourceDto.getPath();
+        String fullPath = rawPath.startsWith(root) ? rawPath : root + rawPath;
+        List<Result<Item>> results
+                = checkCorrectPathToResource(true, new FoundResourceDto(fullPath));
         try {
+            boolean deletedAtLeastOne = false;
             for (Result<Item> result : results) {
                 Item item = result.get();
                 minioClient.removeObject(
@@ -77,11 +77,19 @@ public class MinioService {
                                 .bucket(minioConfig.getBucketName())
                                 .object(item.objectName())
                                 .build());
+                deletedAtLeastOne = true;
+            }
+            if (!deletedAtLeastOne) {
+                String folderPath = fullPath.endsWith("/") ? fullPath : fullPath + "/";
+                minioClient.removeObject(
+                        RemoveObjectArgs.builder()
+                                .bucket(minioConfig.getBucketName())
+                                .object(folderPath)
+                                .build());
             }
         } catch (Exception ex) {
-            String msg = "Exception during delete resource";
-            log.warn(msg);
-            throw new DeleteResourceException(msg);
+            log.error("Delete failed: {}", ex.getMessage());
+            throw new DeleteResourceException("Could not delete resource");
         }
     }
 
@@ -113,7 +121,7 @@ public class MinioService {
         }
     }
 
-    public StreamingResponseBody downloadFolder(FoundResourceDto foundResourceDto, Principal principal) {
+    public StreamingResponseBody downloadFolder(FoundResourceDto foundResourceDto) {
         return outputStream -> {
             MinioClient minioClient = minioConfig.getMinioClient();
             try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
@@ -122,7 +130,7 @@ public class MinioService {
                     pathToResource += "/";
                 }
                 Iterable<Result<Item>> results =
-                        getListResource(true, foundResourceDto.getPath(), principal);
+                        getListResource(true, foundResourceDto.getPath());
                 for (Result<Item> result : results) {
                     Item item = result.get();
                     if (item.isDir()) continue;
@@ -156,11 +164,11 @@ public class MinioService {
         };
     }
 
-    public StreamingResponseBody downloadFile(FoundResourceDto foundResourceDto, Principal principal) {
+    public StreamingResponseBody downloadFile(FoundResourceDto foundResourceDto) {
         return outputStream -> {
             MinioClient minioClient = minioConfig.getMinioClient();
             Iterable<Result<Item>> results =
-                    getListResource(true, foundResourceDto.getPath(), principal);
+                    getListResource(true, foundResourceDto.getPath());
             try {
                 for (Result<Item> result : results) {
                     Item item = result.get();
@@ -195,7 +203,7 @@ public class MinioService {
                 ? rootFolder
                 : createPathToResource(rootFolder, requestPath);
         Iterable<Result<Item>> results =
-                checkCorrectPathToResource(false, new FoundResourceDto(findFolder), principal);
+                checkCorrectPathToResource(false, new FoundResourceDto(findFolder));
         return answerResponseDtoMapper.getListAnswerResponseDtos(results, resourceFinder, findFolder);
     }
 
@@ -271,7 +279,7 @@ public class MinioService {
 
     public List<LinkedHashMap<String, String>> searchResource(SearchResourceDto searchResourceDto, Principal principal) {
         String pathToRootFolder = createPathToRootFolder(principal);
-        Iterable<Result<Item>> allResourcesFromRoot = getListResource(true, pathToRootFolder, principal);
+        Iterable<Result<Item>> allResourcesFromRoot = getListResource(true, pathToRootFolder);
         Iterable<Result<Item>> filteredList = StreamSupport.stream(allResourcesFromRoot.spliterator(), false)
                 .filter(result -> {
                     try {
@@ -299,18 +307,26 @@ public class MinioService {
     public Map<String, String> moveResource(MoveResourceDto movedResourceDto, Principal principal) {
         String resourceFrom = movedResourceDto.getFrom();
         String resourceTo = movedResourceDto.getTo();
-        if (!resourceChecker.isResourceExists(resourceFrom)) {
+        String rootFolder = createPathToRootFolder(principal);
+        String fullPathFrom = resourceFrom.startsWith(rootFolder)
+                ? resourceFrom :
+                createPathToRootFolder(principal) + resourceFrom;
+
+        String fullPathTo = resourceTo.startsWith(rootFolder)
+                ? resourceTo :
+                createPathToRootFolder(principal) + resourceTo;
+        if (!resourceChecker.isResourceExists(fullPathFrom)) {
             throw new ResourceNotFoundException("Resource " + resourceFrom + " not found");
         }
-        if (resourceChecker.isResourceExists(resourceTo)) {
+        if (resourceChecker.isResourceExists(fullPathTo)) {
             throw new ResourceAlreadyExistsException("Resource " + resourceTo + " already exists");
         }
-        if (isRelocate(resourceFrom, resourceTo, principal) && isRename(resourceFrom, resourceTo, principal)) {
+        if (isRelocate(fullPathFrom, fullPathTo, principal) && isRename(fullPathFrom, fullPathTo, principal)) {
             throw new IllegalArgumentException("Must be only rename or relocate");
         }
         return answerResponseDtoMapper.answerResponseDtoToMap(
                 changeResource(
-                        resourceFrom, resourceTo, principal
+                        fullPathFrom, fullPathTo, principal
                 )
         );
     }
@@ -321,13 +337,15 @@ public class MinioService {
     }
 
     private AnswerResponseDto changeResource(String resourceFrom, String resourceTo, Principal principal) {
-        Iterable<Result<Item>> results = getListResource(true, resourceFrom, principal);
+        Iterable<Result<Item>> results = getListResource(true, resourceFrom);
         AnswerResponseDto answerDto = new AnswerResponseDto();
         MinioClient client = minioConfig.getMinioClient();
         String rootFolder = createPathToRootFolder(principal);
         String newResourceToName = resourceTo;
         if (isRelocate(resourceFrom, resourceTo, principal)) {
-            newResourceToName = createPathToResource(rootFolder, resourceTo);
+            if (!resourceTo.startsWith(rootFolder)) {
+                newResourceToName = createPathToResource(rootFolder, resourceTo);
+            }
         }
         try {
             for (Result<Item> result : results) {
@@ -413,20 +431,17 @@ public class MinioService {
         );
     }
 
-    private Iterable<Result<Item>> checkCorrectPathToResource(boolean recursive,
-                                                              FoundResourceDto findResource,
-                                                              Principal principal) {
-        List<Result<Item>> results = StreamSupport
-                .stream(getListResource(recursive, findResource.getPath(), principal).spliterator(), false)
-                .collect(Collectors.toList());
-        boolean isDirectory = findResource.getPath().endsWith("/");
-        String[] splitPath = getSplitPath(findResource.getPath());
-        String resource = splitPath[splitPath.length - 1];
-        if (results.isEmpty()) {
-            if (isDirectory) {
-                throw new FolderNotExistsException("Folder " + resource + " not exists");
+    private List<Result<Item>> checkCorrectPathToResource(boolean isRecursive, FoundResourceDto findResource) {
+
+        Iterable<Result<Item>> iterable = getListResource(isRecursive, findResource.getPath());
+        List<Result<Item>> results = new ArrayList<>();
+        iterable.forEach(results::add);
+        log.warn("Found objects count: " + results.size());
+        for (Result<Item> res : results) {
+            try {
+                log.warn("Target: " + res.get().objectName());
+            } catch (Exception e) {
             }
-            throw new FileNotExistsException("File " + resource + " not exists");
         }
         return results;
     }
@@ -435,8 +450,7 @@ public class MinioService {
         return path.split("/");
     }
 
-    private Iterable<Result<Item>> getListResource(boolean isRecursive, String resource,
-                                                   Principal principal) {
+    private Iterable<Result<Item>> getListResource(boolean isRecursive, String resource) {
         MinioClient minioClient = minioConfig.getMinioClient();
         Iterable<Result<Item>> results = Collections.emptyList();
         if (resource != null) {
@@ -456,15 +470,6 @@ public class MinioService {
 
     private String createPathToResource(String rootFolder, String resource) {
         return rootFolder + resource;
-    }
-
-    public void checkResourceExists(FoundResourceDto foundResourceDto, Principal principal) {
-        Iterable<Result<Item>> results = checkCorrectPathToResource(false, foundResourceDto, principal);
-        List<LinkedHashMap<String, String>> allFound = answerResponseDtoMapper
-                .getListAnswerResponseDtos(results, resourceFinder, foundResourceDto.getPath());
-        if (allFound.isEmpty()) {
-            throw new ResourceNotFoundException("Resource not found");
-        }
     }
 
     private String createPathToResource(String rootFolder, String... resources) {
