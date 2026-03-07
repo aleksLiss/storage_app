@@ -10,5 +10,10 @@ ___
 8. Командой docker compose up -d --build запустить сборку и запуск проекта
 ---
 
-### Документация API доступна по адресу: 
-http://<IP-YOUR-SERVER>:8080/swagger-ui/index.html
+### Документация API доступна по адресу:
+#### http://<IP-YOUR-SERVER>:8080/swagger-ui/index.html
+
+----
+# Ограничения:
+
+Ограничение на размер файла: 10 МВ
