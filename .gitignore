@@ -89,3 +89,5 @@ nb-configuration.xml
 ##############################
 *.log
 .env
+src/main/resources/application-local.yml
+storage_app.iml
