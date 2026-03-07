@@ -1,0 +1,38 @@
+spring:
+  session:
+    data:
+      redis:
+        cleanup-cron: "0 * * * * *"
+        flush-mode: on_save
+        namespace: "myapp:session"
+        repository-type: indexed
+    timeout: 30m
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+  application:
+    name: storage_app
+  datasource:
+    url: ${POSTGRES_URL}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+  flyway:
+    ignore-migration-patterns: "*:*"
+  minio:
+    bucket_name: "user-files"
+    credentials:
+      login: ${MINIO_ROOT_USER}
+      password: ${MINIO_ROOT_PASSWORD}
+    endpoint: "http://minio-server:9000"
+    max_size_file: 10485760
+  servlet:
+    multipart:
+      max-request-size: 1024MB
+      max-file-size: 1024MB
+springdoc:
+  override-with-generic-response: false
