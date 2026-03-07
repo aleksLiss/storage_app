@@ -11,7 +11,7 @@ ___
 ---
 
 ### Документация API доступна по адресу:
-#### http://<IP-YOUR-SERVER>:8080/swagger-ui/index.html
+#### http://IP-YOUR-SERVER:8080/swagger-ui/index.html
 
 ----
 # Ограничения:
