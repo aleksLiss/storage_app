@@ -49,7 +49,11 @@ public class MinioService {
     private static final String FILE = "FILE";
     private static final String ROOT_FOLDER = "user-%s-files/";
 
-    public LinkedHashMap<String, String> getResource(FoundResourceDto foundResourceDto) {
+    public LinkedHashMap<String, String> getResource(FoundResourceDto foundResourceDto,
+                                                     Principal principal) {
+        String root = createPathToRootFolder(principal);
+        String rawPath = foundResourceDto.getPath();
+        String fullPath = rawPath.startsWith(root) ? rawPath : root + rawPath;
         Iterable<Result<Item>> results = checkCorrectPathToResource(false, foundResourceDto);
         List<LinkedHashMap<String, String>> allFound = answerResponseDtoMapper
                 .getListAnswerResponseDtos(results, resourceFinder, foundResourceDto.getPath());
@@ -120,8 +124,12 @@ public class MinioService {
         }
     }
 
-    public StreamingResponseBody downloadFolder(FoundResourceDto foundResourceDto) {
+    public StreamingResponseBody downloadFolder(FoundResourceDto foundResourceDto,
+                                                Principal principal) {
         return outputStream -> {
+            String root = createPathToRootFolder(principal);
+            String rawPath = foundResourceDto.getPath();
+            String fullPath = rawPath.startsWith(root) ? rawPath : root + rawPath;
             try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
                 String pathToResource = foundResourceDto.getPath();
                 if (!pathToResource.endsWith("/")) {
@@ -132,7 +140,6 @@ public class MinioService {
                 for (Result<Item> result : results) {
                     Item item = result.get();
                     if (item.isDir()) continue;
-                    String fullPath = item.objectName();
                     if (fullPath.equals(pathToResource)) continue;
                     String entryName = fullPath.startsWith(pathToResource)
                             ? fullPath.substring(pathToResource.length())
@@ -162,10 +169,13 @@ public class MinioService {
         };
     }
 
-    public StreamingResponseBody downloadFile(FoundResourceDto foundResourceDto) {
+    public StreamingResponseBody downloadFile(FoundResourceDto foundResourceDto, Principal principal) {
         return outputStream -> {
+            String root = createPathToRootFolder(principal);
+            String rawPath = foundResourceDto.getPath();
+            String fullPath = rawPath.startsWith(root) ? rawPath : root + rawPath;
             Iterable<Result<Item>> results =
-                    getListResource(true, foundResourceDto.getPath());
+                    getListResource(true, fullPath);
             try {
                 for (Result<Item> result : results) {
                     Item item = result.get();

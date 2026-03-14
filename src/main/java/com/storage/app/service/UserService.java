@@ -22,6 +22,7 @@ public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
     private final UserDetailsMapper userDetailsMapper;
     private final PasswordEncoder passwordEncoder;
+    private final MinioService minioService;
 
     @Override
     public @NonNull UserDetails loadUserByUsername(@NonNull String username) throws UsernameNotFoundException {
@@ -37,6 +38,7 @@ public class UserService implements UserDetailsService {
         }
         User user = userDetailsMapper.toUser(userDto);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        minioService.createRootFolderForUserByUsername(savedUser.getUsername());
     }
 }
