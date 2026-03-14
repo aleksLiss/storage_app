@@ -24,12 +24,14 @@ spring:
   flyway:
     ignore-migration-patterns: "*:*"
   minio:
-    bucket_name: "user-files"
-    credentials:
-      login: ${MINIO_ROOT_USER}
-      password: ${MINIO_ROOT_PASSWORD}
-    endpoint: "http://minio-server:9000"
-    max_size_file: 10485760
+    storage:
+      app:
+        bucket_name: "user-files"
+        credentials:
+          login: ${MINIO_ROOT_USER}
+          password: ${MINIO_ROOT_PASSWORD}
+        endpoint: "http://minio-server:9000"
+        max_size_file: 10485760
   servlet:
     multipart:
       max-request-size: 1024MB
