@@ -51,10 +51,6 @@ public class UserController {
             )
     })
     public ResponseEntity<?> me(Principal principal) {
-        if (principal == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "User is not authenticated"));
-        }
         return ResponseEntity.ok(Map.of("username", principal.getName()));
     }
 }
