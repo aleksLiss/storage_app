@@ -3,41 +3,29 @@ package com.storage.app.config;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-@Configuration
-@Getter
 @Slf4j
+@Configuration
+@EnableConfigurationProperties(MinioProperties.class)
 public class MinioConfig {
 
-    @Value("${spring.minio.bucket_name}")
-    private String bucketName;
-    @Value("${spring.minio.credentials.login}")
-    private String login;
-    @Value("${spring.minio.credentials.password}")
-    private String password;
-    @Value("${spring.minio.endpoint}")
-    private String endpoint;
-    @Value("${spring.minio.max_size_file}")
-    private double maxSize;
-
-    public MinioClient getMinioClient() {
+    @Bean
+    public MinioClient getMinioClient(MinioProperties minioProperties) {
         return MinioClient.builder()
-                .endpoint(getEndpoint())
-                .credentials(getLogin(), getPassword())
+                .endpoint(minioProperties.endpoint())
+                .credentials(minioProperties.credentials().login(), minioProperties.credentials().password())
                 .build();
     }
 
     @Bean
-    public CommandLineRunner isBucketExist() {
-        MinioClient minioClient = getMinioClient();
+    public CommandLineRunner isBucketExist(MinioClient minioClient, MinioProperties minioProperties) {
         return args -> {
-            String bucketName = getBucketName();
+            String bucketName = minioProperties.bucketName();
             try {
                 boolean found = minioClient.bucketExists(
                         BucketExistsArgs.builder().bucket(bucketName).build()
