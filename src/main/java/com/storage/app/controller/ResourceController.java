@@ -87,8 +87,9 @@ public class ResourceController {
             )
     })
     @GetMapping("/resource")
-    public ResponseEntity<?> getResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto) {
-        LinkedHashMap<String, String> response = minioService.getResource(foundResourceDto);
+    public ResponseEntity<?> getResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto,
+                                         Principal principal) {
+        LinkedHashMap<String, String> response = minioService.getResource(foundResourceDto, principal);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -530,12 +531,12 @@ public class ResourceController {
                     .ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .body(minioService.downloadFolder(foundResourceDto));
+                    .body(minioService.downloadFolder(foundResourceDto, principal));
         }
         return ResponseEntity
                 .ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(minioService.downloadFile(foundResourceDto));
+                .body(minioService.downloadFile(foundResourceDto, principal));
     }
 }

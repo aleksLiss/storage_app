@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,9 +22,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.DelegatingSecurityContextRepository;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,10 +37,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final MinioService minioService;
-    private final SecurityContextRepository securityContextRepository = new DelegatingSecurityContextRepository(
-            new RequestAttributeSecurityContextRepository(),
-            new HttpSessionSecurityContextRepository()
-    );
+    private final SecurityContextRepository securityContextRepository;
 
     @Operation(summary = "Sign-up user")
     @ApiResponses(value = {
@@ -130,38 +123,9 @@ public class AuthController {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, jwtRequest.password())
         );
-        minioService.createRootFolderForUserByUsername(username);
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         securityContextRepository.saveContext(context, request, response);
         return ResponseEntity.ok(Map.of("username", username));
-    }
-
-    @Operation(summary = "Sign-out user")
-    @ApiResponses(value = {
-            @ApiResponse(
-                responseCode = "204"
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Unauthorized",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject("{\"message\":\"Unauthorized user\"}")
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Internal error",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples=@ExampleObject("{\"message\":\"Internal server error\"}")
-                    )
-            )
-    })
-    @PostMapping("/sign-out")
-    public ResponseEntity<?> signOut(HttpSession session) {
-        session.invalidate();
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }
