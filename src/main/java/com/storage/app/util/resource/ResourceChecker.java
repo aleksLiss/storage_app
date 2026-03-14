@@ -1,26 +1,26 @@
 package com.storage.app.util.resource;
 
-import com.storage.app.config.MinioConfig;
+import com.storage.app.config.MinioProperties;
 import io.minio.ListObjectsArgs;
 import io.minio.MinioClient;
 import io.minio.Result;
 import io.minio.messages.Item;
-import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@Data
+@RequiredArgsConstructor
 public class ResourceChecker {
 
-    private final MinioConfig minioConfig;
+    private final MinioProperties minioProperties;
+    private final MinioClient minioClient;
 
     public boolean isResourceExists(String resource) {
-        MinioClient client = minioConfig.getMinioClient();
-        String bucketName = minioConfig.getBucketName();
+        String bucketName = minioProperties.bucketName();
         try {
-            Iterable<Result<Item>> results = client.listObjects(
+            Iterable<Result<Item>> results = minioClient.listObjects(
                     ListObjectsArgs.builder()
                             .bucket(bucketName)
                             .prefix(resource)

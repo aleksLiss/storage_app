@@ -1,22 +1,20 @@
 package com.storage.app.util.path;
 
 import com.storage.app.dto.resource.response.AnswerResponseDto;
-import com.storage.app.util.CopyAnswerResponseDtoCreator;
 import com.storage.app.util.resource.ResourceFinder;
 import io.minio.Result;
 import io.minio.messages.Item;
-import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
 @Component
-@Data
 @Slf4j
+@RequiredArgsConstructor
 public class PathParser {
 
-    private final CopyAnswerResponseDtoCreator copyAnswerResponseDtoCreator;
     private final ResourceFinder resourceFinder;
 
     public List<AnswerResponseDto> parsePath(Iterable<Result<Item>> results) {
