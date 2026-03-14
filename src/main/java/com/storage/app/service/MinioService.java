@@ -1,6 +1,6 @@
 package com.storage.app.service;
 
-import com.storage.app.config.MinioConfig;
+import com.storage.app.config.MinioProperties;
 import com.storage.app.dto.resource.request.*;
 import com.storage.app.dto.resource.response.AnswerResponseDto;
 import com.storage.app.exception.resource.*;
@@ -16,7 +16,7 @@ import com.storage.app.util.resource.ResourceFinder;
 import com.storage.app.util.file.FileChecker;
 import io.minio.*;
 import io.minio.messages.Item;
-import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,12 +32,13 @@ import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-@Service
-@Data
 @Slf4j
+@Service
+@RequiredArgsConstructor
 public class MinioService {
 
-    private final MinioConfig minioConfig;
+    private final MinioClient minioClient;
+    private final MinioProperties minioProperties;
     private final UserRepository userRepository;
     private final FileChecker fileChecker;
     private final PathParser pathParser;
@@ -62,7 +63,6 @@ public class MinioService {
     }
 
     public void deleteResource(FoundResourceDto foundResourceDto, Principal principal) {
-        MinioClient minioClient = minioConfig.getMinioClient();
         String root = createPathToRootFolder(principal);
         String rawPath = foundResourceDto.getPath();
         String fullPath = rawPath.startsWith(root) ? rawPath : root + rawPath;
@@ -74,7 +74,7 @@ public class MinioService {
                 Item item = result.get();
                 minioClient.removeObject(
                         RemoveObjectArgs.builder()
-                                .bucket(minioConfig.getBucketName())
+                                .bucket(minioProperties.bucketName())
                                 .object(item.objectName())
                                 .build());
                 deletedAtLeastOne = true;
@@ -83,7 +83,7 @@ public class MinioService {
                 String folderPath = fullPath.endsWith("/") ? fullPath : fullPath + "/";
                 minioClient.removeObject(
                         RemoveObjectArgs.builder()
-                                .bucket(minioConfig.getBucketName())
+                                .bucket(minioProperties.bucketName())
                                 .object(folderPath)
                                 .build());
             }
@@ -94,13 +94,12 @@ public class MinioService {
     }
 
     public void createRootFolderForUserByUsername(String username) {
-        MinioClient minioClient = minioConfig.getMinioClient();
         try {
             String id = String.valueOf(userRepository.findByUsername(username).get().getUuid());
             String baseFolderName = String.format(ROOT_FOLDER, id);
             Iterable<Result<Item>> results = minioClient.listObjects(
                     ListObjectsArgs.builder()
-                            .bucket(minioConfig.getBucketName())
+                            .bucket(minioProperties.bucketName())
                             .prefix(baseFolderName)
                             .recursive(false)
                             .build()
@@ -108,7 +107,7 @@ public class MinioService {
             if (!results.iterator().hasNext()) {
                 minioClient.putObject(
                         PutObjectArgs.builder()
-                                .bucket(minioConfig.getBucketName())
+                                .bucket(minioProperties.bucketName())
                                 .object(baseFolderName)
                                 .stream(new ByteArrayInputStream(new byte[0]), 0, -1)
                                 .build()
@@ -123,7 +122,6 @@ public class MinioService {
 
     public StreamingResponseBody downloadFolder(FoundResourceDto foundResourceDto) {
         return outputStream -> {
-            MinioClient minioClient = minioConfig.getMinioClient();
             try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
                 String pathToResource = foundResourceDto.getPath();
                 if (!pathToResource.endsWith("/")) {
@@ -143,7 +141,7 @@ public class MinioService {
                     if (entryName.isEmpty()) continue;
                     try (InputStream is = minioClient.getObject(
                             GetObjectArgs.builder()
-                                    .bucket(minioConfig.getBucketName())
+                                    .bucket(minioProperties.bucketName())
                                     .object(fullPath)
                                     .build())) {
                         zos.putNextEntry(new ZipEntry(entryName));
@@ -166,7 +164,6 @@ public class MinioService {
 
     public StreamingResponseBody downloadFile(FoundResourceDto foundResourceDto) {
         return outputStream -> {
-            MinioClient minioClient = minioConfig.getMinioClient();
             Iterable<Result<Item>> results =
                     getListResource(true, foundResourceDto.getPath());
             try {
@@ -174,7 +171,7 @@ public class MinioService {
                     Item item = result.get();
                     try (InputStream inputStream = minioClient.getObject(
                             GetObjectArgs.builder()
-                                    .bucket(minioConfig.getBucketName())
+                                    .bucket(minioProperties.bucketName())
                                     .object(item.objectName())
                                     .build()
                     )) {
@@ -209,7 +206,6 @@ public class MinioService {
 
     public Map<String, String> createFolder(CreateFolderDto folderDto, Principal principal) {
         String pathToFolder = createPathToResource(createPathToRootFolder(principal), folderDto.getPath());
-        MinioClient minioClient = minioConfig.getMinioClient();
         if (resourceChecker.isResourceExists(pathToFolder)) {
             String[] resourseName = getSplitPath(pathToFolder);
             String name = resourseName[resourseName.length - 1];
@@ -220,7 +216,7 @@ public class MinioService {
         try {
             minioClient.putObject(
                     PutObjectArgs.builder()
-                            .bucket(minioConfig.getBucketName())
+                            .bucket(minioProperties.bucketName())
                             .object(pathToFolder)
                             .stream(new ByteArrayInputStream(new byte[0]), 0, -1)
                             .build()
@@ -234,7 +230,6 @@ public class MinioService {
     public List<LinkedHashMap<String, String>> uploadResource(MultipartFile[] files,
                                                               UploadResourceDto uploadResourceDto,
                                                               Principal principal) {
-        MinioClient minioClient = minioConfig.getMinioClient();
         List<LinkedHashMap<String, String>> response = new ArrayList<>();
         String rootFolder = String.format(ROOT_FOLDER, getUUIDFromFoundUser(principal));
         for (MultipartFile file : files) {
@@ -253,7 +248,7 @@ public class MinioService {
                     }
                     minioClient.putObject(
                             PutObjectArgs.builder()
-                                    .bucket(minioConfig.getBucketName())
+                                    .bucket(minioProperties.bucketName())
                                     .object(pathToResource)
                                     .contentType(file.getContentType())
                                     .stream(inputStream, file.getSize(), -1)
@@ -339,7 +334,6 @@ public class MinioService {
     private AnswerResponseDto changeResource(String resourceFrom, String resourceTo, Principal principal) {
         Iterable<Result<Item>> results = getListResource(true, resourceFrom);
         AnswerResponseDto answerDto = new AnswerResponseDto();
-        MinioClient client = minioConfig.getMinioClient();
         String rootFolder = createPathToRootFolder(principal);
         String newResourceToName = resourceTo;
         if (isRelocate(resourceFrom, resourceTo, principal)) {
@@ -374,21 +368,21 @@ public class MinioService {
                 } else {
                     answerDto.setType(DIRECTORY);
                 }
-                client.copyObject(
+                minioClient.copyObject(
                         CopyObjectArgs.builder()
-                                .bucket(minioConfig.getBucketName())
+                                .bucket(minioProperties.bucketName())
                                 .object(newPath)
                                 .source(
                                         CopySource.builder()
-                                                .bucket(minioConfig.getBucketName())
+                                                .bucket(minioProperties.bucketName())
                                                 .object(oldPath)
                                                 .build()
                                 )
                                 .build()
                 );
-                client.removeObject(
+                minioClient.removeObject(
                         RemoveObjectArgs.builder()
-                                .bucket(minioConfig.getBucketName())
+                                .bucket(minioProperties.bucketName())
                                 .object(oldPath)
                                 .build()
                 );
@@ -451,12 +445,11 @@ public class MinioService {
     }
 
     private Iterable<Result<Item>> getListResource(boolean isRecursive, String resource) {
-        MinioClient minioClient = minioConfig.getMinioClient();
         Iterable<Result<Item>> results = Collections.emptyList();
         if (resource != null) {
             results = minioClient.listObjects(
                     ListObjectsArgs.builder()
-                            .bucket(minioConfig.getBucketName())
+                            .bucket(minioProperties.bucketName())
                             .recursive(isRecursive)
                             .prefix(resource)
                             .build());
