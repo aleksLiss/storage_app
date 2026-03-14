@@ -2,7 +2,7 @@ package com.storage.app.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "spring.minio.storage.app")
+@ConfigurationProperties(prefix = "app.minio.storage")
 public record MinioProperties(
         String bucketName,
         Credentials credentials,
