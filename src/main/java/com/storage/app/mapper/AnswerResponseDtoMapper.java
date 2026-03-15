@@ -5,7 +5,6 @@ import com.storage.app.security.UserPrincipal;
 import com.storage.app.util.resource.ResourceFinder;
 import io.minio.Result;
 import io.minio.messages.Item;
-import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -21,7 +20,6 @@ public interface AnswerResponseDtoMapper {
     AnswerResponseDto toDto(Item item);
 
     default List<AnswerResponseDto> getListAnswerResponseDtos(Iterable<Result<Item>> results,
-                                                              @Context ResourceFinder resourceFinder,
                                                               String resource,
                                                               @AuthenticationPrincipal UserPrincipal userDetails) {
         List<AnswerResponseDto> response = new ArrayList<>();
@@ -32,7 +30,7 @@ public interface AnswerResponseDtoMapper {
                 String normalizedResource = resource.endsWith("/") ? resource : resource + "/";
                 if (fullPath.equals(normalizedResource)) continue;
                 AnswerResponseDto answerDto = toDto(item);
-                String name = resourceFinder.getResourceNameFromPath(fullPath);
+                String name = ResourceFinder.getResourceNameFromPath(fullPath);
                 String userRootPrefix = String.format("user-%s-files/", userDetails.getUserId());
                 String relativePath = fullPath.startsWith(userRootPrefix)
                         ? fullPath.substring(userRootPrefix.length())
