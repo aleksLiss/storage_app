@@ -61,7 +61,6 @@ public class User {
         return "User{" +
                 "uuid=" + uuid +
                 ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
                 '}';
     }
 }
