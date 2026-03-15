@@ -34,9 +34,6 @@ public class ResourceManagementServiceImpl implements ResourceManagementService 
 
     private final MinioClient minioClient;
     private final MinioProperties minioProperties;
-    private final PathParser pathParser;
-    private final ResourceChecker resourceChecker;
-    private final ResourceFinder resourceFinder;
     private static final String ROOT_FOLDER = "user-%s-files/";
     private static final String DIRECTORY = "DIRECTORY";
     private static final String FILE = "FILE";
@@ -50,7 +47,7 @@ public class ResourceManagementServiceImpl implements ResourceManagementService 
                 .filter(result -> {
                     try {
                         String queryLower = searchResourceDto.getQuery().toLowerCase();
-                        String resourceName = resourceFinder
+                        String resourceName = ResourceFinder
                                 .getResourceNameFromPath(result.get().objectName()).toLowerCase();
                         if (resourceName.contains(queryLower)) {
                             return true;
@@ -61,7 +58,7 @@ public class ResourceManagementServiceImpl implements ResourceManagementService 
                         return false;
                     }
                 }).toList();
-        return pathParser.parsePath(filteredList);
+        return PathParser.parsePath(filteredList);
     }
 
     @Override
@@ -75,10 +72,10 @@ public class ResourceManagementServiceImpl implements ResourceManagementService 
         String fullPathTo = resourceTo.startsWith(rootFolder)
                 ? resourceTo :
                 createPathToRootFolder(userDetails) + resourceTo;
-        if (!resourceChecker.isResourceExists(fullPathFrom)) {
+        if (!ResourceChecker.isResourceExists(fullPathFrom, minioProperties.bucketName(), minioClient)) {
             throw new ResourceNotFoundException("Resource " + resourceFrom + " not found");
         }
-        if (resourceChecker.isResourceExists(fullPathTo)) {
+        if (ResourceChecker.isResourceExists(fullPathTo, minioProperties.bucketName(), minioClient)) {
             throw new ResourceAlreadyExistsException("Resource " + resourceTo + " already exists");
         }
         if (fullPathFrom.equals(fullPathTo)) {
@@ -119,12 +116,6 @@ public class ResourceManagementServiceImpl implements ResourceManagementService 
             log.error("Delete failed: {}", ex.getMessage());
             throw new DeleteResourceException("Could not delete resource");
         }
-    }
-
-    private boolean isRename(String pathFromStr, String pathToStr, UserPrincipal userDetails) {
-        Map<String, String> parentsAndNamesResources = getParentsAndNamesResources(pathFromStr, pathToStr, userDetails);
-        return !parentsAndNamesResources.get("nameFrom").equals(parentsAndNamesResources.get("nameTo"))
-                && parentsAndNamesResources.get("parentFrom").equals(parentsAndNamesResources.get("parentTo"));
     }
 
     private boolean isRelocate(String pathFromStr, String pathToStr, UserPrincipal userDetails) {
@@ -186,8 +177,8 @@ public class ResourceManagementServiceImpl implements ResourceManagementService 
                         ? newPath.substring(userRootPrefix.length())
                         : newPath;
                 answerDto.setPath(relativePath);
-                answerDto.setName(resourceFinder.getResourceNameFromPath(newPath));
-                if (resourceFinder.getResourceNameFromPath(oldPath).contains(".")) {
+                answerDto.setName(ResourceFinder.getResourceNameFromPath(newPath));
+                if (ResourceFinder.getResourceNameFromPath(oldPath).contains(".")) {
                     answerDto.setSize(item.size());
                     answerDto.setType(FILE);
                 } else {
