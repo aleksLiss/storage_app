@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 @Schema(description = "Dto for sign-in user")
-public record JwtRequest(
+public record SignInRequest(
 
         @Schema(description = "Username", examples = "max@google.com")
         @NotBlank(message = "Username must be not empty")
