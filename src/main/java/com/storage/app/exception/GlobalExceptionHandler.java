@@ -21,7 +21,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
@@ -32,24 +31,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             ResourceAlreadyExistsException.class,
-            FolderCreateException.class,
-            UserAlreadyExistsException.class,
             FileExistException.class})
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ResponseEntity<@NonNull Map<String, String>> handleExistsExceptions(Exception ex) {
-        if (ex instanceof UserAlreadyExistsException) {
-            log.warn(ex.getMessage());
-            String msg = "User already exists";
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("message", msg));
-        }
+    public ResponseEntity<@NonNull Map<String, String>> handleResourceExistsExceptions(Exception ex) {
         log.warn(ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<@NonNull Map<String, String>> handleUserExistsExceptions(UserAlreadyExistsException ex) {
+        log.warn(ex.getMessage());
+        String msg = "User already exists";
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", msg));
+    }
+
     @ExceptionHandler({MethodArgumentNotValidException.class})
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<@NonNull Map<String, String>> handleValidResourcesExceptions(MethodArgumentNotValidException ex) {
         var errors = ex.getBindingResult().getFieldErrors();
         String errorMessage = errors.stream()
@@ -58,14 +55,13 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse(errors.get(0).getDefaultMessage());
 
-        return ResponseEntity.badRequest().body(Map.of("message", errorMessage));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", errorMessage));
     }
 
     @ExceptionHandler({
             FolderNotExistsException.class,
             FileNotExistsException.class,
             ResourceNotFoundException.class})
-    @ResponseStatus(HttpStatus.NOT_FOUND)
     public ResponseEntity<@NonNull Map<String, String>> handleNotExistsException(Exception ex) {
         log.warn(ex.getMessage());
         return ResponseEntity
@@ -74,19 +70,25 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<@NonNull Map<String, String>> handleBadCredentials() {
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("message", "Incorrect username or password"));
     }
 
+    @ExceptionHandler(FileBigSizeException.class)
+    public ResponseEntity<@NonNull Map<String, String>> handleFileBigSizeException(FileBigSizeException ex) {
+        log.warn(ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler({
             AnswerResponseDtoMapperException.class, Exception.class,
+            FolderCreateException.class,
             ResourceUploadException.class, DeleteResourceException.class,
-            FolderDownloadException.class, FileDownloadException.class,
-            FileBigSizeException.class})
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+            FolderDownloadException.class, FileDownloadException.class})
     public ResponseEntity<@NonNull Map<String, String>> handleGeneralException(Exception ex) {
         log.warn(ex.getMessage());
         return ResponseEntity
