@@ -2,7 +2,7 @@ package com.storage.app.controller;
 
 import com.storage.app.dto.authenticate.SignInRequest;
 import com.storage.app.dto.user.UserDto;
-import com.storage.app.service.MinioService;
+import com.storage.app.security.UserPrincipal;
 import com.storage.app.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
@@ -36,7 +37,6 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
-    private final MinioService minioService;
     private final SecurityContextRepository securityContextRepository;
 
     @Operation(summary = "Sign-up user")
@@ -74,8 +74,9 @@ public class AuthController {
             ),
     })
     @PostMapping("/sign-up")
-    public ResponseEntity<?> signUp(@Valid @RequestBody UserDto userDto) {
-        userService.save(userDto);
+    public ResponseEntity<?> signUp(@Valid @RequestBody UserDto userDto,
+                                    @AuthenticationPrincipal UserPrincipal userDetails) {
+        userService.save(userDto, userDetails);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(Map.of("username", userDto.getUsername()));
