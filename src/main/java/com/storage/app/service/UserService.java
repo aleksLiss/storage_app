@@ -5,8 +5,10 @@ import com.storage.app.dto.user.UserDto;
 import com.storage.app.mapper.UserPrincipalMapper;
 import com.storage.app.model.User;
 import com.storage.app.repository.UserRepository;
+import com.storage.app.security.UserPrincipal;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -21,7 +23,7 @@ public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final MinioService minioService;
+    private final MinioFolderService minioFolderService;
     private final UserPrincipalMapper userPrincipalMapper;
 
     @Override
@@ -32,13 +34,13 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public void save(UserDto userDto) {
+    public void save(UserDto userDto, @AuthenticationPrincipal UserPrincipal userDetails) {
         if (userRepository.existsUserByUsername(userDto.getUsername())) {
             throw new UserAlreadyExistsException("User with name " + userDto.getUsername() + " already exists");
         }
         User user = userPrincipalMapper.toUser(userDto);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        User savedUser = userRepository.save(user);
-        minioService.createRootFolderForUserByUsername(savedUser.getUsername());
+        userRepository.save(user);
+        minioFolderService.createRootFolderForUserByUsername(userDetails);
     }
 }
