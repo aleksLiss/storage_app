@@ -2,7 +2,10 @@ package com.storage.app.controller;
 
 import com.storage.app.dto.resource.request.*;
 import com.storage.app.dto.resource.response.AnswerResponseDto;
-import com.storage.app.service.MinioService;
+import com.storage.app.security.UserPrincipal;
+import com.storage.app.service.MinioFileService;
+import com.storage.app.service.MinioFolderService;
+import com.storage.app.service.ResourceManagementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -14,16 +17,14 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.Principal;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -31,7 +32,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Tag(name = "Resource-controller", description = "RESOURCE API")
 public class ResourceController {
-    private final MinioService minioService;
+
+    private final ResourceManagementService resourceManagementService;
+    private final MinioFileService minioFileService;
+    private final MinioFolderService minioFolderService;
 
     @Operation(summary = "Get resource by path")
     @ApiResponses(value = {
@@ -89,8 +93,8 @@ public class ResourceController {
     })
     @GetMapping("/resource")
     public ResponseEntity<@NonNull AnswerResponseDto> getResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto,
-                                                         Principal principal) {
-        AnswerResponseDto response = minioService.getResource(foundResourceDto, principal);
+                                                                  @AuthenticationPrincipal UserPrincipal userDetails) {
+        AnswerResponseDto response = minioFileService.getResource(foundResourceDto, userDetails);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -142,8 +146,8 @@ public class ResourceController {
     })
     @DeleteMapping("/resource")
     public ResponseEntity<?> deleteResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto,
-                                            Principal principal) {
-        minioService.deleteResource(foundResourceDto, principal);
+                                            @AuthenticationPrincipal UserPrincipal userDetails) {
+        resourceManagementService.deleteResource(foundResourceDto, userDetails);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
@@ -208,11 +212,12 @@ public class ResourceController {
             )
     })
     @PostMapping("/resource")
-    public ResponseEntity<@NonNull List<@NonNull AnswerResponseDto>> uploadResource(@ModelAttribute UploadResourceDto uploadResourceDto,
-                                            @RequestParam("object") MultipartFile[] files,
-                                            Principal principal) {
+    public ResponseEntity<@NonNull List<@NonNull AnswerResponseDto>> uploadResource(
+            @ModelAttribute UploadResourceDto uploadResourceDto,
+            @RequestParam("object") MultipartFile[] files,
+            @AuthenticationPrincipal UserPrincipal userDetails) {
         List<AnswerResponseDto> response =
-                minioService.uploadResource(files, uploadResourceDto, principal);
+                minioFileService.uploadResource(uploadResourceDto, files, userDetails);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -280,9 +285,9 @@ public class ResourceController {
             ),
     })
     @PostMapping("/directory")
-    public ResponseEntity<@NonNull AnswerResponseDto> createFolder(Principal principal,
-                                          @Valid @ModelAttribute CreateFolderDto folderDto) {
-        AnswerResponseDto response = minioService.createFolder(folderDto, principal);
+    public ResponseEntity<@NonNull AnswerResponseDto> createFolder(@AuthenticationPrincipal UserPrincipal userDetails,
+                                                                   @Valid @ModelAttribute CreateFolderDto folderDto) {
+        AnswerResponseDto response = minioFolderService.createFolder(userDetails, folderDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -342,9 +347,9 @@ public class ResourceController {
             )
     })
     @GetMapping("/directory")
-    public ResponseEntity<@NonNull List<@NonNull AnswerResponseDto>> getResourceFromDirectory(Principal principal,
-                                                      @Valid @ModelAttribute FoundResourceDto foundResourceDto) {
-        List<AnswerResponseDto> response = minioService.getResourcesFromFolder(foundResourceDto, principal);
+    public ResponseEntity<@NonNull List<@NonNull AnswerResponseDto>> getResourceFromDirectory(@AuthenticationPrincipal UserPrincipal userDetails,
+                                                                                              @Valid @ModelAttribute FoundResourceDto foundResourceDto) {
+        List<AnswerResponseDto> response = minioFolderService.getResourceFromDirectory(userDetails, foundResourceDto);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -414,8 +419,8 @@ public class ResourceController {
     })
     @GetMapping("/resource/move")
     public ResponseEntity<@NonNull AnswerResponseDto> moveResource(@Valid @ModelAttribute MoveResourceDto moveResourceDto,
-                                          Principal principal) {
-        AnswerResponseDto response = minioService.moveResource(moveResourceDto, principal);
+                                                                   @AuthenticationPrincipal UserPrincipal userDetails) {
+        AnswerResponseDto response = resourceManagementService.moveResource(moveResourceDto, userDetails);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -464,8 +469,8 @@ public class ResourceController {
             )
     })
     @GetMapping("/resource/search")
-    public ResponseEntity<@NonNull List<@NonNull AnswerResponseDto>> searchResource(@Valid @ModelAttribute SearchResourceDto searchResourceDto, Principal principal) {
-        List<AnswerResponseDto> response = minioService.searchResource(searchResourceDto, principal);
+    public ResponseEntity<@NonNull List<@NonNull AnswerResponseDto>> searchResource(@Valid @ModelAttribute SearchResourceDto searchResourceDto, @AuthenticationPrincipal UserPrincipal userDetails) {
+        List<AnswerResponseDto> response = resourceManagementService.searchResource(searchResourceDto, userDetails);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -520,7 +525,7 @@ public class ResourceController {
     })
     @GetMapping("/resource/download")
     public ResponseEntity<@NonNull StreamingResponseBody> downloadResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto,
-                                                                           Principal principal) {
+                                                                           @AuthenticationPrincipal UserPrincipal userDetails) {
         String path = foundResourceDto.getPath();
         String fileName = path.endsWith("/")
                 ? path.substring(0, path.length() - 1).concat(".zip")
@@ -532,12 +537,12 @@ public class ResourceController {
                     .ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .body(minioService.downloadFolder(foundResourceDto, principal));
+                    .body(minioFolderService.downloadFolder(foundResourceDto, userDetails));
         }
         return ResponseEntity
                 .ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFilename + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(minioService.downloadFile(foundResourceDto, principal));
+                .body(minioFileService.downloadFile(foundResourceDto, userDetails));
     }
 }
