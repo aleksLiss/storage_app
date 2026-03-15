@@ -4,20 +4,16 @@ import com.storage.app.dto.resource.response.AnswerResponseDto;
 import com.storage.app.util.resource.ResourceFinder;
 import io.minio.Result;
 import io.minio.messages.Item;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-@Component
 @Slf4j
-@RequiredArgsConstructor
+@Component
 public class PathParser {
 
-    private final ResourceFinder resourceFinder;
-
-    public List<AnswerResponseDto> parsePath(Iterable<Result<Item>> results) {
+    public static List<AnswerResponseDto> parsePath(Iterable<Result<Item>> results) {
         List<AnswerResponseDto> answerResponseDtoList = new ArrayList<>();
         try {
             for (Result<Item> result : results) {
@@ -30,9 +26,10 @@ public class PathParser {
                 if (pathToResource.equals("/")) {
                     pathToResource = "";
                 }
-                String lastElem = resourceFinder.getResourceNameFromPath(fullPath);
+                boolean isDirectory = item.objectName().endsWith("/");
+                String lastElem = ResourceFinder.getResourceNameFromPath(fullPath);
                 AnswerResponseDto answerResponseDto = new AnswerResponseDto();
-                if (lastElem.contains(".")) {
+                if (!isDirectory) {
                     answerResponseDto.setPath(pathToResource);
                     answerResponseDto.setName(lastElem);
                     answerResponseDto.setSize(item.size());

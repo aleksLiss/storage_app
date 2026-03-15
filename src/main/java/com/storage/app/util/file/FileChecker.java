@@ -1,6 +1,5 @@
 package com.storage.app.util.file;
 
-import com.storage.app.config.MinioProperties;
 import com.storage.app.exception.resource.file.FileBigSizeException;
 import com.storage.app.exception.resource.file.FileExistException;
 import io.minio.ListObjectsArgs;
@@ -14,23 +13,20 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Paths;
 
-@Component
 @Slf4j
-@RequiredArgsConstructor
+@Component
 public class FileChecker {
 
-    private final MinioProperties minioProperties;
-
-    public void checkFileSize(MultipartFile file) {
-        if (file.getSize() > minioProperties.maxSizeFile()) {
+    public static void checkFileSize(MultipartFile file, long maxFileSize) {
+        if (file.getSize() > maxFileSize) {
             throw new FileBigSizeException("File is too large");
         }
     }
 
-    public void fileExistsInDirectory(MinioClient minioClient, MultipartFile file, String path) {
+    public static void fileExistsInDirectory(MinioClient minioClient, MultipartFile file, String path, String bucketName) {
         Iterable<Result<Item>> results = minioClient.listObjects(
                 ListObjectsArgs.builder()
-                        .bucket(minioProperties.bucketName())
+                        .bucket(bucketName)
                         .prefix(path)
                         .recursive(false)
                         .build()

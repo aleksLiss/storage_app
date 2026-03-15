@@ -11,7 +11,6 @@ import com.storage.app.mapper.AnswerResponseDtoMapper;
 import com.storage.app.security.UserPrincipal;
 import com.storage.app.service.MinioFolderService;
 import com.storage.app.util.resource.ResourceChecker;
-import com.storage.app.util.resource.ResourceFinder;
 import io.minio.*;
 import io.minio.messages.Item;
 import lombok.NonNull;
@@ -33,9 +32,7 @@ public class MinioFolderServiceImpl implements MinioFolderService {
 
     private final MinioClient minioClient;
     private final MinioProperties minioProperties;
-    private final ResourceFinder resourceFinder;
     private final AnswerResponseDtoMapper answerResponseDtoMapper;
-    private final ResourceChecker resourceChecker;
     private static final String ROOT_FOLDER = "user-%s-files/";
 
     @Override
@@ -92,13 +89,13 @@ public class MinioFolderServiceImpl implements MinioFolderService {
                 : createPathToResource(rootFolder, requestPath);
         Iterable<Result<Item>> results =
                 checkCorrectPathToResource(false, new FoundResourceDto(findFolder));
-        return answerResponseDtoMapper.getListAnswerResponseDtos(results, resourceFinder, findFolder, userDetails);
+        return answerResponseDtoMapper.getListAnswerResponseDtos(results, findFolder, userDetails);
     }
 
     @Override
     public AnswerResponseDto createFolder(UserPrincipal  userDetails, CreateFolderDto folderDto) {
         String pathToFolder = createPathToResource(createPathToRootFolder(userDetails), folderDto.getPath());
-        if (resourceChecker.isResourceExists(pathToFolder)) {
+        if (ResourceChecker.isResourceExists(pathToFolder, minioProperties.bucketName(), minioClient)) {
             String[] resourseName = getSplitPath(pathToFolder);
             String name = resourseName[resourseName.length - 1];
             String msg = "Folder '" + name + "' already exists";
@@ -120,7 +117,7 @@ public class MinioFolderServiceImpl implements MinioFolderService {
                 false,
                 new FoundResourceDto(pathToFolder));
         return answerResponseDtoMapper
-                .getListAnswerResponseDtos(results, resourceFinder, pathToFolder, userDetails)
+                .getListAnswerResponseDtos(results, pathToFolder, userDetails)
                 .getFirst();
     }
 

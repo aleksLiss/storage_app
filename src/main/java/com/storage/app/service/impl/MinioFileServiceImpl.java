@@ -32,8 +32,6 @@ public class MinioFileServiceImpl implements MinioFileService {
     private final MinioClient minioClient;
     private final MinioProperties minioProperties;
     private final AnswerResponseDtoMapper answerResponseDtoMapper;
-    private final ResourceFinder resourceFinder;
-    private final FileChecker fileChecker;
     private static final String DIRECTORY = "DIRECTORY";
     private static final String FILE = "FILE";
     private static final String ROOT_FOLDER = "user-%s-files/";
@@ -79,10 +77,10 @@ public class MinioFileServiceImpl implements MinioFileService {
         List<AnswerResponseDto> response = new ArrayList<>();
         String rootFolder = String.format(ROOT_FOLDER, userDetails.getUserId());
         for (MultipartFile file : files) {
-            fileChecker.checkFileSize(file);
+            FileChecker.checkFileSize(file, minioProperties.maxSizeFile());
             String checkPathForUploadResource = createPathToRootFolder(userDetails)
                     + uploadResourceDto.getPath();
-            fileChecker.fileExistsInDirectory(minioClient, file, checkPathForUploadResource);
+            FileChecker.fileExistsInDirectory(minioClient, file, checkPathForUploadResource, minioProperties.bucketName());
             try {
                 try (InputStream inputStream = file.getInputStream()) {
                     String pathToResource =
@@ -124,7 +122,7 @@ public class MinioFileServiceImpl implements MinioFileService {
         String fullPath = rawPath.startsWith(root) ? rawPath : root + rawPath;
         Iterable<Result<Item>> results = checkCorrectPathToResource(false, new FoundResourceDto(fullPath));
         List<AnswerResponseDto> allFound = answerResponseDtoMapper
-                .getListAnswerResponseDtos(results, resourceFinder, foundResourceDto.getPath(), userDetails);
+                .getListAnswerResponseDtos(results, foundResourceDto.getPath(), userDetails);
         if (allFound.isEmpty()) {
             throw new ResourceNotFoundException("Resource not found");
         }
