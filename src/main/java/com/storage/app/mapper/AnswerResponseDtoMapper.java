@@ -10,16 +10,15 @@ import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AnswerResponseDtoMapper {
 
-    default List<LinkedHashMap<String, String>> getListAnswerResponseDtos(Iterable<Result<Item>> results,
+    default List<AnswerResponseDto> getListAnswerResponseDtos(Iterable<Result<Item>> results,
                                                                           @Context ResourceFinder resourceFinder,
                                                                           String resource) {
-        List<LinkedHashMap<String, String>> response = new ArrayList<>();
+        List<AnswerResponseDto> response = new ArrayList<>();
         try {
             for (Result<Item> result : results) {
                 Item item = result.get();
@@ -39,47 +38,13 @@ public interface AnswerResponseDtoMapper {
                 } else {
                     answerDto.setName(name);
                     answerDto.setType("FILE");
-                    answerDto.setSize(Long.toString(item.size()));
+                    answerDto.setSize(item.size());
                 }
-                response.add(answerResponseDtoToMap(answerDto));
+                response.add(answerDto);
             }
         } catch (Exception ex) {
             throw new AnswerResponseDtoMapperException("Error map item to answer response dto: " + ex.getMessage());
         }
         return response;
-    }
-
-    default LinkedHashMap<String, String> answerResponseDtoToMap(AnswerResponseDto answerResponseDto) {
-        LinkedHashMap<String, String> map = new LinkedHashMap<>();
-        map.put("path", answerResponseDto.getPath());
-        map.put("name", answerResponseDto.getName());
-        if (answerResponseDto.getSize() != null) {
-            map.put("size", answerResponseDto.getSize());
-        }
-        map.put("type", answerResponseDto.getType());
-        return map;
-    }
-
-    default LinkedHashMap<String, String> answerResponseDtoToMap(@Context ResourceFinder resourceFinder,
-                                                                 String pathToFolder) {
-        AnswerResponseDto answerResponseDto = new AnswerResponseDto();
-        LinkedHashMap<String, String> map = new LinkedHashMap<>();
-        String path = resourceFinder.getPathToResourceFromPath(pathToFolder);
-        String name = resourceFinder.getResourceNameFromPath(pathToFolder);
-        answerResponseDto.setPath(path);
-        answerResponseDto.setName(name);
-        if (name.endsWith("/")) {
-            answerResponseDto.setType("DIRECTORY");
-        }
-        map.put("path", answerResponseDto.getPath());
-        map.put("name", answerResponseDto.getName());
-        if (answerResponseDto.getSize() != null) {
-            map.put("size", answerResponseDto.getSize());
-        }
-        if (answerResponseDto.getSize() == null) {
-            answerResponseDto.setType("DIRECTORY");
-        }
-        map.put("type", answerResponseDto.getType());
-        return map;
     }
 }
