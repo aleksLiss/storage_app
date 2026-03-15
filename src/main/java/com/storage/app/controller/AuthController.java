@@ -1,6 +1,6 @@
 package com.storage.app.controller;
 
-import com.storage.app.dto.authenticate.JwtRequest;
+import com.storage.app.dto.authenticate.SignInRequest;
 import com.storage.app.dto.user.UserDto;
 import com.storage.app.service.MinioService;
 import com.storage.app.service.UserService;
@@ -116,12 +116,12 @@ public class AuthController {
             )
     })
     @PostMapping("/sign-in")
-    public ResponseEntity<?> signIn(@Valid @RequestBody JwtRequest jwtRequest,
+    public ResponseEntity<?> signIn(@Valid @RequestBody SignInRequest signInRequest,
                                     HttpServletRequest request,
                                     HttpServletResponse response) {
-        String username = jwtRequest.username();
+        String username = signInRequest.username();
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, jwtRequest.password())
+                new UsernamePasswordAuthenticationToken(username, signInRequest.password())
         );
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
