@@ -1,7 +1,7 @@
 package com.storage.app.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.storage.app.dto.authenticate.JwtRequest;
+import com.storage.app.dto.authenticate.SignInRequest;
 import com.storage.app.dto.user.UserDto;
 import com.storage.app.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
@@ -85,7 +85,7 @@ public class UserControllerTest {
         UserDto userDto = new UserDto();
         userDto.setUsername("user@mail.com");
         userDto.setPassword("password");
-        JwtRequest jwtRequest = new JwtRequest(userDto.getUsername(), userDto.getPassword());
+        SignInRequest signInRequest = new SignInRequest(userDto.getUsername(), userDto.getPassword());
         mockMvc.perform(post(SIGN_UP_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(userDto)))
@@ -95,7 +95,7 @@ public class UserControllerTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();

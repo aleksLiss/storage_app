@@ -12,6 +12,6 @@ import lombok.NoArgsConstructor;
 public class AnswerResponseDto {
     private String path;
     private String name;
-    private String size;
+    private long size;
     private String type;
 }

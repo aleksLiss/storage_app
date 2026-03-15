@@ -35,7 +35,7 @@ public class PathParser {
                 if (lastElem.contains(".")) {
                     answerResponseDto.setPath(pathToResource);
                     answerResponseDto.setName(lastElem);
-                    answerResponseDto.setSize(String.valueOf(item.size()));
+                    answerResponseDto.setSize(item.size());
                     answerResponseDto.setType("FILE");
                     answerResponseDtoList.add(answerResponseDto);
                     continue;

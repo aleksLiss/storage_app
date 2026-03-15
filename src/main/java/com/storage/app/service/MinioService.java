@@ -49,19 +49,20 @@ public class MinioService {
     private static final String FILE = "FILE";
     private static final String ROOT_FOLDER = "user-%s-files/";
 
-    public LinkedHashMap<String, String> getResource(FoundResourceDto foundResourceDto,
-                                                     Principal principal) {
+    public AnswerResponseDto getResource(FoundResourceDto foundResourceDto,
+                                         Principal principal) {
+
         String root = createPathToRootFolder(principal);
         String rawPath = foundResourceDto.getPath();
         String fullPath = rawPath.startsWith(root) ? rawPath : root + rawPath;
-        Iterable<Result<Item>> results = checkCorrectPathToResource(false, foundResourceDto);
-        List<LinkedHashMap<String, String>> allFound = answerResponseDtoMapper
+        Iterable<Result<Item>> results = checkCorrectPathToResource(false, new FoundResourceDto(fullPath));
+        List<AnswerResponseDto> allFound = answerResponseDtoMapper
                 .getListAnswerResponseDtos(results, resourceFinder, foundResourceDto.getPath());
         if (allFound.isEmpty()) {
             throw new ResourceNotFoundException("Resource not found");
         }
         return allFound.stream()
-                .filter(map -> foundResourceDto.getPath().equals(map.get("path")))
+                .filter(answerResponseDto -> foundResourceDto.getPath().equals(answerResponseDto.getPath()))
                 .findFirst()
                 .orElse(allFound.getFirst());
     }
@@ -202,8 +203,8 @@ public class MinioService {
         };
     }
 
-    public List<LinkedHashMap<String, String>> getResourcesFromFolder(FoundResourceDto foundResourceDto,
-                                                                      Principal principal) {
+    public List<AnswerResponseDto> getResourcesFromFolder(FoundResourceDto foundResourceDto,
+                                                          Principal principal) {
         String rootFolder = createPathToRootFolder(principal);
         String requestPath = foundResourceDto.getPath();
         String findFolder = (requestPath == null || requestPath.isEmpty() || requestPath.equals(rootFolder))
@@ -214,7 +215,7 @@ public class MinioService {
         return answerResponseDtoMapper.getListAnswerResponseDtos(results, resourceFinder, findFolder);
     }
 
-    public Map<String, String> createFolder(CreateFolderDto folderDto, Principal principal) {
+    public AnswerResponseDto createFolder(CreateFolderDto folderDto, Principal principal) {
         String pathToFolder = createPathToResource(createPathToRootFolder(principal), folderDto.getPath());
         if (resourceChecker.isResourceExists(pathToFolder)) {
             String[] resourseName = getSplitPath(pathToFolder);
@@ -234,13 +235,18 @@ public class MinioService {
         } catch (Exception ex) {
             throw new FolderCreateException("Exception during create folder");
         }
-        return answerResponseDtoMapper.answerResponseDtoToMap(resourceFinder, pathToFolder);
+        Iterable<Result<Item>> results = checkCorrectPathToResource(
+                false,
+                new FoundResourceDto(pathToFolder));
+        return answerResponseDtoMapper
+                .getListAnswerResponseDtos(results, resourceFinder, pathToFolder)
+                .getFirst();
     }
 
-    public List<LinkedHashMap<String, String>> uploadResource(MultipartFile[] files,
-                                                              UploadResourceDto uploadResourceDto,
-                                                              Principal principal) {
-        List<LinkedHashMap<String, String>> response = new ArrayList<>();
+    public List<AnswerResponseDto> uploadResource(MultipartFile[] files,
+                                                  UploadResourceDto uploadResourceDto,
+                                                  Principal principal) {
+        List<AnswerResponseDto> response = new ArrayList<>();
         String rootFolder = String.format(ROOT_FOLDER, getUUIDFromFoundUser(principal));
         for (MultipartFile file : files) {
             fileChecker.checkFileSize(file);
@@ -265,13 +271,11 @@ public class MinioService {
                                     .build()
                     );
                     response.add(
-                            answerResponseDtoMapper.answerResponseDtoToMap(
-                                    new AnswerResponseDto(
-                                            uploadResourceDto.getPath(),
-                                            Objects.requireNonNull(file.getOriginalFilename()),
-                                            String.valueOf(file.getSize()),
-                                            file.getOriginalFilename().contains(".") ? FILE : DIRECTORY
-                                    )
+                            new AnswerResponseDto(
+                                    uploadResourceDto.getPath(),
+                                    Objects.requireNonNull(file.getOriginalFilename()),
+                                    file.getSize(),
+                                    file.getOriginalFilename().contains(".") ? FILE : DIRECTORY
                             )
                     );
                 }
@@ -282,7 +286,7 @@ public class MinioService {
         return response;
     }
 
-    public List<LinkedHashMap<String, String>> searchResource(SearchResourceDto searchResourceDto, Principal principal) {
+    public List<AnswerResponseDto> searchResource(SearchResourceDto searchResourceDto, Principal principal) {
         String pathToRootFolder = createPathToRootFolder(principal);
         Iterable<Result<Item>> allResourcesFromRoot = getListResource(true, pathToRootFolder);
         Iterable<Result<Item>> filteredList = StreamSupport.stream(allResourcesFromRoot.spliterator(), false)
@@ -300,16 +304,10 @@ public class MinioService {
                         return false;
                     }
                 }).toList();
-        List<AnswerResponseDto> answerResponseDtos = pathParser.parsePath(filteredList);
-        for (AnswerResponseDto answerResponseDto : answerResponseDtos) {
-            log.warn(answerResponseDto.getPath());
-        }
-        return answerResponseDtos.stream()
-                .map(answerResponseDtoMapper::answerResponseDtoToMap)
-                .toList();
+        return pathParser.parsePath(filteredList);
     }
 
-    public Map<String, String> moveResource(MoveResourceDto movedResourceDto, Principal principal) {
+    public AnswerResponseDto moveResource(MoveResourceDto movedResourceDto, Principal principal) {
         String resourceFrom = movedResourceDto.getFrom();
         String resourceTo = movedResourceDto.getTo();
         String rootFolder = createPathToRootFolder(principal);
@@ -329,10 +327,8 @@ public class MinioService {
         if (isRelocate(fullPathFrom, fullPathTo, principal) && isRename(fullPathFrom, fullPathTo, principal)) {
             throw new IllegalArgumentException("Must be only rename or relocate");
         }
-        return answerResponseDtoMapper.answerResponseDtoToMap(
-                changeResource(
-                        fullPathFrom, fullPathTo, principal
-                )
+        return changeResource(
+                fullPathFrom, fullPathTo, principal
         );
     }
 
@@ -373,7 +369,7 @@ public class MinioService {
                 answerDto.setPath(resourceFinder.getPathToResourceFromPath(newPath));
                 answerDto.setName(resourceFinder.getResourceNameFromPath(newPath));
                 if (resourceFinder.getResourceNameFromPath(oldPath).contains(".")) {
-                    answerDto.setSize(String.valueOf(item.size()));
+                    answerDto.setSize(item.size());
                     answerDto.setType(FILE);
                 } else {
                     answerDto.setType(DIRECTORY);

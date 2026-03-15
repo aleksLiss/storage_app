@@ -1,7 +1,7 @@
 package com.storage.app.minio;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.storage.app.dto.authenticate.JwtRequest;
+import com.storage.app.dto.authenticate.SignInRequest;
 import com.storage.app.dto.user.UserDto;
 import com.storage.app.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
@@ -45,8 +45,8 @@ public class MinioServiceTest {
 
     private UserDto userDto;
     private UserDto userDto2;
-    private JwtRequest jwtRequest;
-    private JwtRequest jwtRequest2;
+    private SignInRequest signInRequest;
+    private SignInRequest signInRequest2;
 
     private static final String rootFolder = "user-%s-files/";
     private static final String FOLDER_URL = "/api/directory";
@@ -103,7 +103,7 @@ public class MinioServiceTest {
                         .content(objectMapper.writeValueAsString(userDto)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("user@mail.com"));
-        jwtRequest = new JwtRequest(userDto.getUsername(), userDto.getPassword());
+        signInRequest = new SignInRequest(userDto.getUsername(), userDto.getPassword());
         userDto2 = new UserDto();
         userDto2.setUsername("user2@mail.com");
         userDto2.setPassword("password");
@@ -112,7 +112,7 @@ public class MinioServiceTest {
                         .content(objectMapper.writeValueAsString(userDto2)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("user2@mail.com"));
-        jwtRequest2 = new JwtRequest(userDto2.getUsername(), userDto2.getPassword());
+        signInRequest2 = new SignInRequest(userDto2.getUsername(), userDto2.getPassword());
 
     }
 
@@ -134,7 +134,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -158,7 +158,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -200,7 +200,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -227,7 +227,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -272,7 +272,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -294,7 +294,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -334,7 +334,7 @@ public class MinioServiceTest {
         assertThat(isExists2).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -342,7 +342,7 @@ public class MinioServiceTest {
         assertThat(sessionCookie).isNotNull();
         MvcResult signInResult2 = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest2)))
+                        .content(objectMapper.writeValueAsString(signInRequest2)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session2 = signInResult2.getRequest().getSession();
         assertThat(session2).isNotNull();
@@ -403,7 +403,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -424,7 +424,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -479,7 +479,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -501,7 +501,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -557,7 +557,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -592,7 +592,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -643,7 +643,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -708,7 +708,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -729,7 +729,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -779,7 +779,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();
@@ -800,7 +800,7 @@ public class MinioServiceTest {
         assertThat(isExists).isTrue();
         MvcResult signInResult = mockMvc.perform(post(SIGN_IN_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jwtRequest)))
+                        .content(objectMapper.writeValueAsString(signInRequest)))
                 .andExpect(status().isOk()).andReturn();
         HttpSession session = signInResult.getRequest().getSession();
         assertThat(session).isNotNull();

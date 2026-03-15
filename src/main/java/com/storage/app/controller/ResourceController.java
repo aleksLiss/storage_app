@@ -1,6 +1,7 @@
 package com.storage.app.controller;
 
 import com.storage.app.dto.resource.request.*;
+import com.storage.app.dto.resource.response.AnswerResponseDto;
 import com.storage.app.service.MinioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -87,9 +88,9 @@ public class ResourceController {
             )
     })
     @GetMapping("/resource")
-    public ResponseEntity<?> getResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto,
-                                         Principal principal) {
-        LinkedHashMap<String, String> response = minioService.getResource(foundResourceDto, principal);
+    public ResponseEntity<@NonNull AnswerResponseDto> getResource(@Valid @ModelAttribute FoundResourceDto foundResourceDto,
+                                                         Principal principal) {
+        AnswerResponseDto response = minioService.getResource(foundResourceDto, principal);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -207,10 +208,10 @@ public class ResourceController {
             )
     })
     @PostMapping("/resource")
-    public ResponseEntity<?> uploadResource(@ModelAttribute UploadResourceDto uploadResourceDto,
+    public ResponseEntity<@NonNull List<@NonNull AnswerResponseDto>> uploadResource(@ModelAttribute UploadResourceDto uploadResourceDto,
                                             @RequestParam("object") MultipartFile[] files,
                                             Principal principal) {
-        List<LinkedHashMap<String, String>> response =
+        List<AnswerResponseDto> response =
                 minioService.uploadResource(files, uploadResourceDto, principal);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -279,9 +280,9 @@ public class ResourceController {
             ),
     })
     @PostMapping("/directory")
-    public ResponseEntity<?> createFolder(Principal principal,
+    public ResponseEntity<@NonNull AnswerResponseDto> createFolder(Principal principal,
                                           @Valid @ModelAttribute CreateFolderDto folderDto) {
-        Map<String, String> response = minioService.createFolder(folderDto, principal);
+        AnswerResponseDto response = minioService.createFolder(folderDto, principal);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -341,9 +342,9 @@ public class ResourceController {
             )
     })
     @GetMapping("/directory")
-    public ResponseEntity<?> getResourceFromDirectory(Principal principal,
+    public ResponseEntity<@NonNull List<@NonNull AnswerResponseDto>> getResourceFromDirectory(Principal principal,
                                                       @Valid @ModelAttribute FoundResourceDto foundResourceDto) {
-        List<LinkedHashMap<String, String>> response = minioService.getResourcesFromFolder(foundResourceDto, principal);
+        List<AnswerResponseDto> response = minioService.getResourcesFromFolder(foundResourceDto, principal);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -412,9 +413,9 @@ public class ResourceController {
             )
     })
     @GetMapping("/resource/move")
-    public ResponseEntity<?> moveResource(@Valid @ModelAttribute MoveResourceDto moveResourceDto,
+    public ResponseEntity<@NonNull AnswerResponseDto> moveResource(@Valid @ModelAttribute MoveResourceDto moveResourceDto,
                                           Principal principal) {
-        Map<String, String> response = minioService.moveResource(moveResourceDto, principal);
+        AnswerResponseDto response = minioService.moveResource(moveResourceDto, principal);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -463,8 +464,8 @@ public class ResourceController {
             )
     })
     @GetMapping("/resource/search")
-    public ResponseEntity<?> searchResource(@Valid @ModelAttribute SearchResourceDto searchResourceDto, Principal principal) {
-        List<LinkedHashMap<String, String>> response = minioService.searchResource(searchResourceDto, principal);
+    public ResponseEntity<@NonNull List<@NonNull AnswerResponseDto>> searchResource(@Valid @ModelAttribute SearchResourceDto searchResourceDto, Principal principal) {
+        List<AnswerResponseDto> response = minioService.searchResource(searchResourceDto, principal);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
